@@ -1,0 +1,17 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+build/
+
+# Env files
+.env
+.env.*
+
+# OS/Editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Testing/coverage
+coverage/
