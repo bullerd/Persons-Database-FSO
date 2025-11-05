@@ -47,25 +47,24 @@ app.get("/api/persons", (request, response) => {
 
 app.get("/api/info", (request, response) => {
   const currentdate = new Date();
-  // const datetime =
-  //   "Data is current as of " +
-  //   currentdate.getDate() +
-  //   "/" +
-  //   (currentdate.getMonth() + 1) +
-  //   "/" +
-  //   currentdate.getFullYear() +
-  //   " @ " +
-  //   currentdate.getHours() +
-  //   ":" +
-  //   currentdate.getMinutes() +
-  //   ":" +
-  //   currentdate.getSeconds();
+  const datetime =
+    currentdate.getDate() +
+    "/" +
+    (currentdate.getMonth() + 1) +
+    "/" +
+    currentdate.getFullYear() +
+    " @ " +
+    currentdate.getHours() +
+    ":" +
+    currentdate.getMinutes() +
+    ":" +
+    currentdate.getSeconds();
   const html = `
     <div>
       <p>The phonebook currently has ${persons.length} ${
     persons.length === 1 ? "entries" : "entries"
   } <br />
-    as of ${currentdate}
+    as of ${datetime}
     </p>
     </div>
     `;
