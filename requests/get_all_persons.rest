@@ -1,1 +1,1 @@
-GET http://localhost:3001/api/persons
+GET https://persons-database-fso.onrender.com/api/persons
