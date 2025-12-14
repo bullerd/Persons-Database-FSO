@@ -56,9 +56,9 @@ app.get("/api/info", (request, response) => {
     " @ " +
     currentdate.getHours() +
     ":" +
-    currentdate.getMinutes() +
+    currentdate.getMinutes().toString().padStart(2, "0") +
     ":" +
-    currentdate.getSeconds();
+    currentdate.getSeconds().toString().padStart(2, "0");
   const html = `
     <div>
       <p>The phonebook currently has ${persons.length} ${
