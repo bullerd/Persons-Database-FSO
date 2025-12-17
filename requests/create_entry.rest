@@ -1,7 +1,7 @@
-POST https://persons-database-fso.onrender.com/api/persons
+POST http://localhost:3001/api/persons
 Content-Type: application/json
 
 {
-    "name": "Ellen Buller",
+    "name": "aa",
     "number": "203-214-3874"
 }

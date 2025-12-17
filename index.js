@@ -18,34 +18,19 @@ const requestLogger = (request, response, next) => {
 };
 app.use(requestLogger);
 
-let persons = [
-  {
-    id: "1",
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: "2",
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-  },
-  {
-    id: "3",
-    name: "Dan Abramov",
-    number: "12-43-234345",
-  },
-  {
-    id: "4",
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-  },
-];
+const Contact = require("./models/contact");
 
-app.get("/api/persons", (request, response) => {
-  response.json(persons);
+app.get("/api/persons", async (request, response, next) => {
+  console.log("get All Contacts...");
+  try {
+    const persons = await Contact.find({});
+    response.json(persons);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.get("/api/info", (request, response) => {
+app.get("/api/info", async (request, response, error) => {
   const currentdate = new Date();
   const datetime =
     currentdate.getDate() +
@@ -59,58 +44,53 @@ app.get("/api/info", (request, response) => {
     currentdate.getMinutes().toString().padStart(2, "0") +
     ":" +
     currentdate.getSeconds().toString().padStart(2, "0");
-  const html = `
+  try {
+    const numContacts = await Contact.countDocuments();
+
+    const html = `
     <div>
-      <p>The phonebook currently has ${persons.length} ${
-    persons.length === 1 ? "entries" : "entries"
-  } <br />
+      <p>The phonebook currently has ${numContacts} ${
+      numContacts === 1 ? "entries" : "entries"
+    } <br />
     as of ${datetime}
     </p>
     </div>
     `;
-  response.send(html);
-});
-
-// endpoint for a single entry
-app.get("/api/persons/:id", (request, response) => {
-  const id = request.params.id;
-  const person = persons.find((person) => person.id === id);
-  if (person) {
-    response.json(person);
-  } else {
-    response.statusMessage = `Person ${id} entry not found`;
-    response.status(404).end();
-    // response.send(
-    //   `;
-    //     <h1>Error</h1>
-    //     <p>Unable to find a person with id ${id}`
-    // );
+    response.send(html);
+  } catch (error) {
+    next(error);
   }
 });
 
-//delete
-app.delete("/api/persons/:id", (request, response) => {
+// endpoint for a single entry
+app.get("/api/persons/:id", async (request, response, next) => {
   const id = request.params.id;
-  persons = persons.filter((person) => person.id !== id);
-
-  response.status(204).end();
+  try {
+    const person = await Contact.findById(id);
+    if (!person) {
+      return response.status(404).end();
+    }
+    response.json(person);
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
 });
 
-//helper function
-const personsContainsName = (name) => persons.some((p) => p.name === name);
+app.delete("/api/persons/:id", async (request, response, next) => {
+  const id = request.params.id;
+  try {
+    const result = await Contact.findByIdAndDelete(request.params.id);
+    response.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
 
-//add a new person
-const MAX_ID = 1000000;
-const generateId = () => {
-  const usedIds = new Set(persons.map((p) => Number(p.id)));
-  let newId;
-  do {
-    newId = Math.floor(Math.random() * MAX_ID + 1);
-  } while (usedIds.has(newId));
-  return String(newId);
-};
-
-app.post("/api/persons", (request, response) => {
+// add a new person
+// TODO: ensure the person isn't already in the database
+app.post("/api/persons", async (request, response, next) => {
+  console.log("adding new person");
   const body = request.body;
 
   if (!body.name || !body.number) {
@@ -119,33 +99,61 @@ app.post("/api/persons", (request, response) => {
     });
   }
 
-  if (personsContainsName(body.name)) {
+  const person = new Contact({
+    name: body.name,
+    number: body.number,
+  });
+
+  try {
+    const savedPerson = await person.save();
+    response.status(201).json(savedPerson);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// update the phone number of an entry
+app.put("/api/persons/:id", async (request, response, next) => {
+  const { name, number } = request.body;
+  console.log(request.params.id);
+  try {
+    const person = await Contact.findById(request.params.id);
+    if (!person) {
+      return response.status(404).end();
+    }
+    person.name = name;
+    person.number = number;
+
+    const updatedContact = await person.save();
+    response.json(updatedContact);
+  } catch (error) {
+    next(error);
+  }
+});
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: "unknown endpoint" });
+};
+
+app.use(unknownEndpoint);
+
+const errorHandler = (error, request, response, next) => {
+  if (error.name === "CastError") {
+    return response.status(400).json({ error: "malformatted id" });
+  } else if (error.name === "ValidationError") {
+    const details = Object.fromEntries(
+      Object.entries(error.errors).map(([field, err]) => [field, err.message])
+    );
     return response.status(400).json({
-      error: "name already exists",
+      error: "validation error",
+      details,
     });
   }
-  const person = {
-    name: body.name,
-    number: body.number,
-    id: generateId(),
-  };
 
-  persons = persons.concat(person);
+  response.status(500).json({ error: "internal server error" });
+};
 
-  response.json(person);
-});
-
-//experimental!
-app.put("/api/persons/:id", (request, response) => {
-  const body = request.body;
-  const person = {
-    name: body.name,
-    number: body.number,
-    id: body.id,
-  };
-  persons = persons.map((p) => (p.id === person.id ? person : p));
-  response.json(person);
-});
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
